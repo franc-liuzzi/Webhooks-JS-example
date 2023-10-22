@@ -32,6 +32,18 @@ functions:
             detail-type:
               - example-1
 
+  consumer-2:
+    handler: src/consumer-2.handler
+    timeout: 30
+    events:
+      - eventBridge:
+          eventBus: !Ref EventBus
+          pattern:
+            source:
+              - webhook
+            detail-type:
+              - example-2
+
 custom:
   resource_prefix: ${self:service}-${sls:stage}-
 
@@ -82,9 +94,36 @@ resources:
         ApiId:
           Ref: HttpApi
         AuthorizationType: NONE
-        RouteKey: GET /webhooks/example-1
+        RouteKey: GET /webhook/example-1
         Target:
           Fn::Join:
           - "/"
           - - integrations
             - !Ref HttpApiIntegrationExampleOne
+    HttpApiIntegrationExampleTwo:
+      Type: AWS::ApiGatewayV2::Integration
+      Properties:
+        ApiId: !Ref HttpApi
+        ConnectionType: INTERNET
+        CredentialsArn: !GetAtt ApiGwEventBusIntegrationRole.Arn
+        IntegrationSubtype: EventBridge-PutEvents
+        IntegrationType: AWS_PROXY
+        PayloadFormatVersion: '1.0'
+        RequestParameters:
+          EventBusName: !Ref EventBus
+          Source: webhook
+          DetailType: example-2
+          Detail: "$request.body"
+    HttpApiRouteExampleTwo:
+      Type: AWS::ApiGatewayV2::Route
+      Properties:
+        ApiId:
+          Ref: HttpApi
+        AuthorizationType: NONE
+        RouteKey: POST /webhook/example-2
+        Target:
+          Fn::Join:
+          - "/"
+          - - integrations
+            - !Ref HttpApiIntegrationExampleTwo
+    
