@@ -13,6 +13,12 @@ provider:
   versionFunctions: false
   httpApi:
     shouldStartNameWithService: true
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: 'sqs:SendMessage'
+          Resource: !GetAtt DlQueue.Arn
 
 functions:
   web:
@@ -35,6 +41,7 @@ functions:
   consumer-2:
     handler: src/consumer-2.handler
     timeout: 30
+    onError: !GetAtt DlQueue.Arn
     events:
       - eventBridge:
           eventBus: !Ref EventBus
@@ -126,4 +133,7 @@ resources:
           - "/"
           - - integrations
             - !Ref HttpApiIntegrationExampleTwo
-    
+    DlQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.resource_prefix}DlQueue
